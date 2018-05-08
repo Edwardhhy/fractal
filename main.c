@@ -3,8 +3,20 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
+#include <ctype.h>
+#include <semaphore.h>
+#include <pthread.h>
+#include <errno.h>
 //#include "fractal.h"
 
+char** filenames ; // enregistrer le nom des fichiers
+
+pthread_mutex_t mutexRead; //mutex pour proteger la structure lors de la lecture des fichiers
+
+
+sem_t semRead; // semaphore pour la lecture des fichiers
+
+int err ;
 
 void newLine(FILE* fDes){
    int k ;
@@ -25,9 +37,9 @@ char* getWord(FILE* fDes){
    int i = 0 ;
    int k ;
    do{
-      if(i > 0){
+      if(i > 0){ 
          *(word + i - 1) = c; 
-      }   
+      } 
       k = fread(bufc,sizeof(char),1,fDes) ;
       if(k == 0){
          word = '\0' ;
@@ -40,13 +52,18 @@ char* getWord(FILE* fDes){
 }
 
 
-void fileReading(char* filename){
-   FILE* fDes = fopen(filename,"r") ;
+void* fileReading(void* pos){
+   int * num ;
+   num = (int*) pos ;
+   printf("%d \n",*num);
+   char * str = filenames[*num] ;
+   printf("debut fileReading %s \n",str);
+   FILE* fDes = fopen(str,"r") ;
    if(fDes < 0 || &fDes == NULL){
       perror("impossible de lire le fichier \n") ;
       fclose(fDes) ;
       exit(EXIT_FAILURE) ;
-   }
+   } 
       while(1){
          char* name = getWord(fDes) ;
          if(feof(fDes)){
@@ -57,7 +74,7 @@ void fileReading(char* filename){
             char* heightc = getWord(fDes);
             char* arg1c = getWord(fDes) ;
             char* arg2c = getWord(fDes) ;     
-            int width = atoi(widthc) ;  // ajouter sécurité en cas de mauvais argument
+            int width = atoi(widthc) ;
             int height = atoi(heightc);
             double arg1 = atof(arg1c) ;
             double arg2 = atof(arg2c) ;
@@ -69,10 +86,55 @@ void fileReading(char* filename){
             }
          }
       }
+pthread_exit(NULL) ;
 }
 
 int main(int argc, char *argv[])
 {
-    fileReading(argv[1]) ;
+    int count  = 0;
+    for(int i = 1; i < argc; i++){
+    printf("On est rentré : %s \n",argv[i]) ;
+       if(strcmp(argv[i],"-d") == 0){
+          // dessiner tout les fichiers a la fin
+          count++ ;
+       }
+       else if(strcmp(argv[i],"2") == 0){
+          // nombre de threads de calcul max
+          count++ ;
+       }
+       else if(strcmp(argv[i],"-") == 0){
+          //Lire l'entree standard
+          count++ ;
+       }
+       else{
+          break ;
+	}
+       
+    }
+    pthread_t threadRead[argc - count] ; //thread de lecture
+    filenames = malloc(sizeof(char)*64) ;
+    int value[argc-count] ;
+    for(int i =count + 1; i < argc ; i++){
+       value[i - count-1] = i - count -1 ; // car on ne peut passer i dans thread_create puisqu'il change sans arret
+       filenames[i - count - 1] = malloc(sizeof(char)*64) ;
+       filenames[i - count - 1] = argv[i] ;
+       err=pthread_create(&threadRead[i-count-1],NULL,&fileReading, (void*) &value[i - count - 1]);
+       printf("Thread créé \n") ;
+       if(err!=0) {
+	  printf("%s\n", "Could not create thread");
+	  exit(EXIT_FAILURE);
+	}
+    }
+    
+			
+    printf("avant join \n") ;
+    for(int i =0; i < argc - count -1 ; i++){
+    printf("vraiment avant join %d \n",i) ;
+    err = pthread_join(threadRead[i],NULL) ;
+       if(err != 0){
+          printf("%s\n", "Could not join thread");
+			exit(EXIT_FAILURE);
+       }
+    }
     return 0;
 }
