@@ -2,7 +2,7 @@
 #define _FRACTAL_H
 
 struct fractal {
-    struct values tab;
+    int* value;
     char* name;
     unsigned int width;
     unsigned int height;
@@ -10,9 +10,7 @@ struct fractal {
     double b;
 };
 
-struct values {
-    int tab[][];
-};
+
 
 
 /*
