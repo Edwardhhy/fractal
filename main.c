@@ -7,8 +7,8 @@
 #include <semaphore.h>
 #include <pthread.h>
 #include <errno.h>
-#include "fractal.h"
-#include "queue.h"
+//#include "fractal.h"
+//#include "queue.h"
 
 char** filenames ; // enregistrer le nom des fichiers
 
@@ -17,6 +17,7 @@ pthread_mutex_t mutexRead; //mutex pour proteger la structure lors de la lecture
 sem_t semRead; // semaphore pour la lecture des fichiers
 
 int err ;
+int readstdin = 0 ;
 
 void newLine(FILE* fDes){
    int k ;
@@ -91,6 +92,34 @@ exit(0) ;
 pthread_exit(NULL) ;
 }
 
+void* stdinReading(){
+   printf("debut fileReading stdin \n"); 
+      while(1){
+         char* name = getWord(stdin) ;
+         if(feof(stdin)){
+            break ;
+         }
+         if(*name != '#' && *name != '\0'){
+            char* widthc = getWord(stdin) ;
+            char* heightc = getWord(stdin);
+            char* arg1c = getWord(stdin) ;
+            char* arg2c = getWord(stdin) ;     
+            int width = atoi(widthc) ;
+            int height = atoi(heightc);
+            double arg1 = atof(arg1c) ;
+            double arg2 = atof(arg2c) ;
+            printf("nos valeurs :\n %s \n %d \n %d \n %f \n %f \n",name,width,height,arg1,arg2);
+            
+         }
+         else{
+            if(*name == '#'){
+               newLine(stdin) ;
+            }
+         }
+      }
+pthread_exit(NULL) ;
+}
+
 int main(int argc, char *argv[])
 {
     int count  = 0;
@@ -106,7 +135,8 @@ int main(int argc, char *argv[])
        }
        else if(strcmp(argv[i],"-") == 0){
           //Lire l'entree standard
-          count++ ;
+          printf("Lecture entrée standart demandé \n");
+          readstdin = 1 ;
        }
        else{
           break ;
@@ -116,7 +146,23 @@ int main(int argc, char *argv[])
     pthread_t threadRead[argc - count] ; //thread de lecture
     filenames = malloc(sizeof(char)*64) ;
     int value[argc-count] ;
+    
+    if(readstdin == 1){
+       err=pthread_create(&threadRead[0],NULL,&stdinReading, NULL);
+       printf("Thread stdin créé \n") ;
+       if(err!=0) {
+	  printf("%s\n", "Could not create thread");
+	  exit(EXIT_FAILURE);
+	}
+    }
+    
+    printf("avant la boucle for  \n") ;
     for(int i =count + 1; i < argc ; i++){
+       printf("i vaut %d \n",i);
+       if(i == count + 1 && readstdin == 1){
+          i++ ;
+          printf("On augmente i \n") ;
+       }
        value[i - count-1] = i - count -1 ; // car on ne peut passer i dans thread_create puisqu'il change sans arret
        filenames[i - count - 1] = malloc(sizeof(char)*64) ;
        filenames[i - count - 1] = argv[i] ;
