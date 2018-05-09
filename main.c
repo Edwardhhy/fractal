@@ -32,7 +32,7 @@ void newLine(FILE* fDes){
 }
    
 char* getWord(FILE* fDes){
-   char* word = malloc(sizeof(char)*64);
+   char* word = malloc(sizeof(char)*64) ;
    char c ;
    char* bufc = &c;
    int i = 0 ;
@@ -75,7 +75,7 @@ exit(0) ;
             char* widthc = getWord(fDes) ;
             char* heightc = getWord(fDes);
             char* arg1c = getWord(fDes) ;
-            char* arg2c = getWord(fDes) ;     
+            char* arg2c = getWord(fDes) ;    
             int width = atoi(widthc) ;
             int height = atoi(heightc);
             double arg1 = atof(arg1c) ;
@@ -89,16 +89,14 @@ exit(0) ;
             }
          }
       }
+fclose(fDes) ;
 pthread_exit(NULL) ;
 }
 
 void* stdinReading(){
    printf("debut fileReading stdin \n"); 
-      while(1){
+   
          char* name = getWord(stdin) ;
-         if(feof(stdin)){
-            break ;
-         }
          if(*name != '#' && *name != '\0'){
             char* widthc = getWord(stdin) ;
             char* heightc = getWord(stdin);
@@ -116,7 +114,8 @@ void* stdinReading(){
                newLine(stdin) ;
             }
          }
-      }
+fclose(stdin) ;
+
 pthread_exit(NULL) ;
 }
 
