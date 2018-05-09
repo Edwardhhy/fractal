@@ -7,12 +7,12 @@
 #include <semaphore.h>
 #include <pthread.h>
 #include <errno.h>
-//#include "fractal.h"
+#include "fractal.h"
+#include "queue.h"
 
 char** filenames ; // enregistrer le nom des fichiers
 
 pthread_mutex_t mutexRead; //mutex pour proteger la structure lors de la lecture des fichiers
-
 
 sem_t semRead; // semaphore pour la lecture des fichiers
 
@@ -59,8 +59,9 @@ void* fileReading(void* pos){
    char * str = filenames[*num] ;
    printf("debut fileReading %s \n",str);
    FILE* fDes = fopen(str,"r") ;
-   if(fDes < 0 || &fDes == NULL){
+   if(fDes == NULL){
       perror("impossible de lire le fichier \n") ;
+exit(0) ;
       fclose(fDes) ;
       exit(EXIT_FAILURE) ;
    } 
@@ -79,6 +80,7 @@ void* fileReading(void* pos){
             double arg1 = atof(arg1c) ;
             double arg2 = atof(arg2c) ;
             printf("nos valeurs :\n %s \n %d \n %d \n %f \n %f \n",name,width,height,arg1,arg2);
+            
          }
          else{
             if(*name == '#'){
