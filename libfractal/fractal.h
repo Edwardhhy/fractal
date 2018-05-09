@@ -10,9 +10,6 @@ struct fractal {
     double b;
 };
 
-
-
-
 /*
  * fractal_new: alloue une nouvelle structure fractal
  *
