@@ -19,6 +19,10 @@ queue* listeFractal ;
 sem_t semRead; // semaphore pour la lecture des fichiers
 
 int readstdin = 0 ;
+int drawAll; // 1 if true, 0 if draw just the best average
+static double maxAverage = 0; // Remember the maximum computed average
+struct fractal *maxAverageFractal = NULL;
+
 
 void newLine(FILE* fDes){
    int k ;
@@ -140,6 +144,43 @@ void* stdinReading(){
 fclose(stdin) ;
 
 pthread_exit(NULL) ;
+}
+
+// Consumer
+void *computeValueThreadFunction(void *n){
+    while(true){
+        sem_wait(&full);
+        pthread_mutex_lock(&formula);
+        struct fractal *toComputeFormula = dequeue(formula);
+        pthread_mutex_unlock(&lockFormula);
+        sem_post(&empty);
+        // Problem allocating memory
+        if(fractal == NULL){
+            free(fractal);
+            break;
+        }
+        // Compute the average of the fractal
+        double average = fractalAverage(fractal);
+
+        if(drawAll == 0){ // We draw only the best average fractal
+            pthread_mutex_lock(&computed);
+            if(average > maxAverage){
+                free(maxAverageFractal);
+                maxAverage = average;
+                maxAverageFractal = fractal;
+            }
+            pthread_mutex_unlock(&computed);
+            else{
+                fractal_free(fractal); // Nothing to do we simply throw the fractal
+            }
+        }
+        else{ // We draw every fractal
+            pthread_mutex_lock(&computed);
+            enqueue(fractal, computed); // We add the computed fractal in the queue
+            pthread_mutex_unlock(&computed);
+        }
+    }
+        pthread_mutex_lock(&lockC)
 }
 
 int main(int argc, char *argv[])
