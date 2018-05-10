@@ -7,16 +7,17 @@
 #include <semaphore.h>
 #include <pthread.h>
 #include <errno.h>
-//#include "fractal.h"
-//#include "queue.h"
+#include "libfractal/fractal.h"
+#include "queue.h"
 
 char** filenames ; // enregistrer le nom des fichiers
 
 pthread_mutex_t mutexRead; //mutex pour proteger la structure lors de la lecture des fichiers
 
+queue* listeFractal ;
+
 sem_t semRead; // semaphore pour la lecture des fichiers
 
-int err ;
 int readstdin = 0 ;
 
 void newLine(FILE* fDes){
@@ -62,7 +63,7 @@ void* fileReading(void* pos){
    FILE* fDes = fopen(str,"r") ;
    if(fDes == NULL){
       perror("impossible de lire le fichier \n") ;
-exit(0) ;
+      exit(0) ;
       fclose(fDes) ;
       exit(EXIT_FAILURE) ;
    } 
@@ -71,7 +72,7 @@ exit(0) ;
          if(feof(fDes)){
             break ;
          }
-         if(*name != '#' && *name != '\0'){
+         if(*name != '#' && *name != '\0' && *name != '\n'){
             char* widthc = getWord(fDes) ;
             char* heightc = getWord(fDes);
             char* arg1c = getWord(fDes) ;
@@ -80,7 +81,21 @@ exit(0) ;
             int height = atoi(heightc);
             double arg1 = atof(arg1c) ;
             double arg2 = atof(arg2c) ;
+            struct fractal* fract = fractal_new(name, width, height, arg1, arg2) ;
+            
+            pthread_mutex_lock(&mutexRead) ;
+            int err = enqueue(fract,listeFractal) ;
+            if(err != 0){
+               printf("%s\n", "Could not enqueue fractal");
+               exit(EXIT_FAILURE);
+            }
+            pthread_mutex_unlock(&mutexRead) ;
+            
             printf("nos valeurs :\n %s \n %d \n %d \n %f \n %f \n",name,width,height,arg1,arg2);
+            free(heightc) ;
+            free(widthc) ;
+            free(arg1c) ;
+            free(arg2c) ;
             
          }
          else{
@@ -90,12 +105,12 @@ exit(0) ;
          }
       }
 fclose(fDes) ;
+printf("On quitte la thread %d \n",*num);
 pthread_exit(NULL) ;
 }
 
 void* stdinReading(){
    printf("debut fileReading stdin \n"); 
-   
          char* name = getWord(stdin) ;
          if(*name != '#' && *name != '\0'){
             char* widthc = getWord(stdin) ;
@@ -106,6 +121,14 @@ void* stdinReading(){
             int height = atoi(heightc);
             double arg1 = atof(arg1c) ;
             double arg2 = atof(arg2c) ;
+            struct fractal* fract = fractal_new(name, width, height, arg1, arg2) ;
+            pthread_mutex_lock(&mutexRead) ;
+            int err = enqueue(fract,listeFractal) ;
+            if(err != 0){
+               printf("%s\n", "Could not enqueue fractal");
+               exit(EXIT_FAILURE);
+            }
+            pthread_mutex_unlock(&mutexRead) ;
             printf("nos valeurs :\n %s \n %d \n %d \n %f \n %f \n",name,width,height,arg1,arg2);
             
          }
@@ -121,6 +144,14 @@ pthread_exit(NULL) ;
 
 int main(int argc, char *argv[])
 {
+    listeFractal = initQueue() ;
+    
+    int err=pthread_mutex_init( &mutexRead, NULL);
+    if(err!=0){
+       printf("%s\n", "Could not initiate mutex");
+       exit(EXIT_FAILURE);
+    }
+    
     int count  = 0;
     for(int i = 1; i < argc; i++){
     printf("On est rentré : %s \n",argv[i]) ;
