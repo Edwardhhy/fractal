@@ -15,6 +15,7 @@ char* fileOutName ;
 
 pthread_mutex_t mutexRead; //mutex pour proteger la structure lors de la lecture des fichiers
 pthread_mutex_t bestAverage; 
+pthread_mutex_t fractalProt ;
 queue* listeFractal ;
 queue* bestAverageList;
 
@@ -151,51 +152,58 @@ pthread_exit(NULL) ;
 
 // Consumer
 void *computeValueThreadFunction(void *n){
+int count = 0 ;
     while(1){
+        count++ ;
+        printf("count est a : %d \n",count);
         sem_wait(&full);
-        pthread_mutex_lock(&listeFractal);
+        printf("Apres full count est a : %d \n",count);
+        pthread_mutex_lock(&fractalProt);
         // Section critique
         struct fractal *toComputeFractal = dequeue(listeFractal);
-        pthread_mutex_unlock(&listeFractal);
+        pthread_mutex_unlock(&fractalProt);
         sem_post(&empty);
         // Problem allocating memory
         if(toComputeFractal == NULL){
-            free(toComputeFractal);
+            fractal_free(toComputeFractal);
             break;
         }
         // Compute the average of the fractal
-        double average = fractalAverage(toComputeFractal);
+        double* average = fractalAverage(toComputeFractal);
+        
 
         if(drawAll == 0){ // We draw only the best average fractal
             //Section critique
             pthread_mutex_lock(&bestAverage);
-            if(average > maxAverage){
+            if(*average > maxAverage){
                 free(bestAverageList);
-                maxAverage = average;
-                bestAverageList = initQueue;
+                maxAverage = *average;
+                bestAverageList = initQueue();
                 enqueue(toComputeFractal,bestAverageList);
             }
-            else if(average = maxAverage){
+            else if(*average == maxAverage){
                 enqueue(toComputeFractal, bestAverageList);
             }
-            pthread_mutex_unlock(&bestAverage);
             else{
-                fractal_free(fractal); // Nothing to do we simply throw the fractal
+                fractal_free(toComputeFractal); // Nothing to do we simply throw the fractal
             }
+            pthread_mutex_unlock(&bestAverage);
 	    }
         else{ // We draw every fractal
-        int sizeOfResult = 65;
+            int sizeOfResult = 65;
 	    char *name = (char*)malloc(sizeof(char)*(sizeOfResult+5));
 	    strncpy(name,fractal_get_name(toComputeFractal),65);
 	    write_bitmap_sdl(toComputeFractal, strcat(name,".bmp"));
 	    free(name);
         }
+        free(average) ;
     }
+    pthread_exit(NULL) ;
 }
 
 int main(int argc, char *argv[])
 {
-    int maxThreads;
+    int maxThreads = 4;
 
     // Initialisation queues;
     listeFractal = initQueue();
@@ -218,8 +226,13 @@ int main(int argc, char *argv[])
         printf("%s\n", "Could not initiate mutex");
         exit(EXIT_FAILURE);
      }
-    sem_init(&empty, 0, maxThreads);
-    sem_init(&full, 0, 0);
+     err = pthread_mutex_init(&fractalProt, NULL);
+    if(err!=0){
+        printf("%s\n", "Could not initiate mutex");
+        exit(EXIT_FAILURE);
+     }
+     sem_init(&empty, 0, maxThreads);
+     sem_init(&full, 0, 0);
     
     int count  = 0;
     for(int i = 1; i < argc; i++){
@@ -291,7 +304,7 @@ int main(int argc, char *argv[])
     printf("fichier de sortie : %s \n",fileOutName) ;
 			
     printf("avant join \n") ;
-    for(int i =0; i < argc - count -1 ; i++){
+    for(int i =0; i < argc - count -2 ; i++){
     printf("vraiment avant join %d \n",i) ;
     err = pthread_join(threadRead[i],NULL) ;
        if(err != 0){
@@ -302,6 +315,7 @@ int main(int argc, char *argv[])
 	
     // Joining threads
     for (int i = 0; i < maxThreads; i++) {
+        printf("Avant de rejoindre les threads de calcul : %d \n",i);
         pthread_join(threadCompute[i], NULL);
     }
 	
