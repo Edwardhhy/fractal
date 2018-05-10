@@ -11,6 +11,7 @@
 #include "queue.h"
 
 char** filenames ; // enregistrer le nom des fichiers
+char* fileOutName ;
 
 pthread_mutex_t mutexRead; //mutex pour proteger la structure lors de la lecture des fichiers
 
@@ -19,10 +20,6 @@ queue* listeFractal ;
 sem_t semRead; // semaphore pour la lecture des fichiers
 
 int readstdin = 0 ;
-int drawAll; // 1 if true, 0 if draw just the best average
-static double maxAverage = 0; // Remember the maximum computed average
-struct fractal *maxAverageFractal = NULL;
-
 
 void newLine(FILE* fDes){
    int k ;
@@ -53,7 +50,7 @@ char* getWord(FILE* fDes){
       }
       i++ ;
    }while(c != ' ' && c != '\n' && c != '\0' && k > 0) ;
-   *(word + i -1) = '\0' ;
+   *(word + i - 1) = '\0' ;
    return word ;
 }
 
@@ -76,7 +73,7 @@ void* fileReading(void* pos){
          if(feof(fDes)){
             break ;
          }
-         if(*name != '#' && *name != '\0' && *name != '\n'){
+         if(*name != '#' && *name != '\0'){
             char* widthc = getWord(fDes) ;
             char* heightc = getWord(fDes);
             char* arg1c = getWord(fDes) ;
@@ -146,47 +143,11 @@ fclose(stdin) ;
 pthread_exit(NULL) ;
 }
 
-// Consumer
-void *computeValueThreadFunction(void *n){
-    while(true){
-        sem_wait(&full);
-        pthread_mutex_lock(&formula);
-        struct fractal *toComputeFormula = dequeue(formula);
-        pthread_mutex_unlock(&lockFormula);
-        sem_post(&empty);
-        // Problem allocating memory
-        if(fractal == NULL){
-            free(fractal);
-            break;
-        }
-        // Compute the average of the fractal
-        double average = fractalAverage(fractal);
-
-        if(drawAll == 0){ // We draw only the best average fractal
-            pthread_mutex_lock(&computed);
-            if(average > maxAverage){
-                free(maxAverageFractal);
-                maxAverage = average;
-                maxAverageFractal = fractal;
-            }
-            pthread_mutex_unlock(&computed);
-            else{
-                fractal_free(fractal); // Nothing to do we simply throw the fractal
-            }
-        }
-        else{ // We draw every fractal
-            pthread_mutex_lock(&computed);
-            enqueue(fractal, computed); // We add the computed fractal in the queue
-            pthread_mutex_unlock(&computed);
-        }
-    }
-        pthread_mutex_lock(&lockC)
-}
-
 int main(int argc, char *argv[])
 {
     listeFractal = initQueue() ;
     
+    int maxThreads ;
     int err=pthread_mutex_init( &mutexRead, NULL);
     if(err!=0){
        printf("%s\n", "Could not initiate mutex");
@@ -200,14 +161,12 @@ int main(int argc, char *argv[])
           // dessiner tout les fichiers a la fin
           count++ ;
        }
-       else if(strcmp(argv[i],"2") == 0){
+       else if(strcmp(argv[i],"--maxthreads") == 0){
           // nombre de threads de calcul max
+          maxThreads = atoi(argv[i + 1]) ;
+          i++ ;
           count++ ;
-       }
-       else if(strcmp(argv[i],"-") == 0){
-          //Lire l'entree standard
-          printf("Lecture entrée standart demandé \n");
-          readstdin = 1 ;
+          count++ ;
        }
        else{
           break ;
@@ -218,22 +177,15 @@ int main(int argc, char *argv[])
     filenames = malloc(sizeof(char)*64) ;
     int value[argc-count] ;
     
-    if(readstdin == 1){
-       err=pthread_create(&threadRead[0],NULL,&stdinReading, NULL);
-       printf("Thread stdin créé \n") ;
-       if(err!=0) {
-	  printf("%s\n", "Could not create thread");
-	  exit(EXIT_FAILURE);
-	}
-    }
-    
     printf("avant la boucle for  \n") ;
-    for(int i =count + 1; i < argc ; i++){
+    for(int i =count + 1; i < argc -1 ; i++){
        printf("i vaut %d \n",i);
-       if(i == count + 1 && readstdin == 1){
-          i++ ;
-          printf("On augmente i \n") ;
+       if(strcmp(argv[i],"-") == 0){
+          //Lire l'entree standard
+          printf("Lecture entrée standart demandé \n");
+          readstdin = 1 ;
        }
+       else{
        value[i - count-1] = i - count -1 ; // car on ne peut passer i dans thread_create puisqu'il change sans arret
        filenames[i - count - 1] = malloc(sizeof(char)*64) ;
        filenames[i - count - 1] = argv[i] ;
@@ -243,8 +195,20 @@ int main(int argc, char *argv[])
 	  printf("%s\n", "Could not create thread");
 	  exit(EXIT_FAILURE);
 	}
+       }
     }
     
+    if(readstdin == 1){
+       err=pthread_create(&threadRead[0],NULL,&stdinReading, NULL);
+       printf("Thread stdin créé \n") ;
+       if(err!=0) {
+	  printf("%s\n", "Could not create thread");
+	  exit(EXIT_FAILURE);
+	}
+    }
+    
+    fileOutName = argv[argc - 1] ;
+    printf("fichier de sortie : %s \n",fileOutName) ;
 			
     printf("avant join \n") ;
     for(int i =0; i < argc - count -1 ; i++){
