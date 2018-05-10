@@ -53,7 +53,7 @@ char* getWord(FILE* fDes){
       }
       i++ ;
    }while(c != ' ' && c != '\n' && c != '\0' && k > 0) ;
-   *(word + i) = '\0' ;
+   *(word + i -1) = '\0' ;
    return word ;
 }
 
