@@ -1,5 +1,6 @@
 #include <stdlib.h>
 
+
 typedef struct queueNode_t {
     struct queueNode_t *next;
     void *elem;
@@ -110,4 +111,31 @@ void *dequeue(queue *queue) {
 void *peek(queue *queue) {
     if (queue->head == NULL) return NULL;
     return queue->head->elem;
+}
+
+/*
+ *@param queue: une file de struct queue 
+ *@return : 1 si le nom est dedans ,0 sinon
+ *
+ *retourne 1 si le nom est dans la liste
+ */
+int checkName(queue *queue,char* toCheck){
+   if(queue == NULL || queue -> head == NULL){
+      return 0 ;
+   }
+   char* currentName = malloc(sizeof(char)*64) ;
+   struct fractal* fract = (queue -> head) -> elem ;
+   currentName = fractal_get_name(fract) ;
+   queueNode* node = queue -> head ;
+   while(node != NULL){
+      if(strcmp(currentName,toCheck)){
+         free(currentName) ;
+         return 1 ;
+      }
+   node = node -> next ;
+   fract = node -> elem ;
+   currentName = fractal_get_name(fract) ;
+   }
+   free(currentName) ;
+   return 0 ;
 }
