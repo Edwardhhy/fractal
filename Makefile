@@ -3,10 +3,14 @@ all: main
 
 main: main.o 
 	cd libfractal && make
-	gcc -Wall -g -o main main.o libfractal/libfractal.a -lSDL -lpthread
+	gcc -Wall -Wextra -Werror --std=c99 -g -o main main.o libfractal/libfractal.a -lSDL -lpthread
 
 main.o: main.c
 	gcc -Wall -g -c main.c -lpthread
+
+test :
+	cd Test && make
+	make clean
 
 lib:
 	cd libfractal && make
