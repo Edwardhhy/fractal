@@ -102,13 +102,21 @@ int fractal_compute_value(struct fractal *f, int x, int y)
     return val;
 }
 
-double fractalAverage(struct fractal  *f){
+double* fractalAverage(struct fractal  *f){
     double sum = 0;
-    for(int i = 0; i<fractal_get_width(f); i++){
-        for(int j = 0 ; i<fractal_get_height(f); j++){
-            fractal_compute_value(f,x,y);
-            sum = sum + fractal_get_value(f,x,y);
+    int w = fractal_get_width(f) ;
+    int h = fractal_get_height(f) ;
+    for(int i = 0; i<w; i++){
+        for(int j = 0 ; j<h; j++){
+            fractal_compute_value(f,i,j);
+            sum = sum + fractal_get_value(f,i,j);
         }
     }
-    return sum/(w*h);
+    double *sol = malloc(sizeof(double)) ;
+    *sol =  sum/(w*h);
+    
+    return sol ;
+    
 }
+
+
